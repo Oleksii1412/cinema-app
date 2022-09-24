@@ -80,7 +80,6 @@ public class Main {
         } catch (RegistrationException e) {
             System.out.println("Can't register user " + john);
         }
-
         shoppingCartService.addSession(yesterdayMovieSession, john);
         Order completedOrder
                 = orderService.completeOrder(shoppingCartService.getByUser(john));
