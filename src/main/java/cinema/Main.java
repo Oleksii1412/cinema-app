@@ -5,6 +5,7 @@ import cinema.lib.Injector;
 import cinema.model.CinemaHall;
 import cinema.model.Movie;
 import cinema.model.MovieSession;
+import cinema.model.Order;
 import cinema.model.User;
 import cinema.security.AuthenticationService;
 import cinema.service.CinemaHallService;
@@ -12,14 +13,26 @@ import cinema.service.MovieService;
 import cinema.service.MovieSessionService;
 import cinema.service.OrderService;
 import cinema.service.ShoppingCartService;
+import cinema.util.HashUtil;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class Main {
-    public static void main(String[] args) {
-        Injector injector = Injector.getInstance("cinema");
+    private static final Injector injector = Injector.getInstance("cinema");
 
-        MovieService movieService = (MovieService) injector.getInstance(MovieService.class);
+    public static void main(String[] args) {
+        final MovieService movieService
+                = (MovieService) injector.getInstance(MovieService.class);
+        final CinemaHallService cinemaHallService
+                = (CinemaHallService) injector.getInstance(CinemaHallService.class);
+        final MovieSessionService movieSessionService
+                = (MovieSessionService) injector.getInstance(MovieSessionService.class);
+        final AuthenticationService authenticationService
+                = (AuthenticationService) injector.getInstance(AuthenticationService.class);
+        final ShoppingCartService shoppingCartService
+                = (ShoppingCartService) injector.getInstance(ShoppingCartService.class);
+        final OrderService orderService
+                = (OrderService) injector.getInstance(OrderService.class);
 
         Movie fastAndFurious = new Movie("Fast and Furious");
         fastAndFurious.setDescription("An action film about street racing, heists, and spies.");
@@ -35,8 +48,6 @@ public class Main {
         secondCinemaHall.setCapacity(200);
         secondCinemaHall.setDescription("second hall with capacity 200");
 
-        CinemaHallService cinemaHallService =
-                (CinemaHallService) injector.getInstance(CinemaHallService.class);
         cinemaHallService.add(firstCinemaHall);
         cinemaHallService.add(secondCinemaHall);
 
@@ -53,8 +64,6 @@ public class Main {
         yesterdayMovieSession.setMovie(fastAndFurious);
         yesterdayMovieSession.setShowTime(LocalDateTime.now().minusDays(1L));
 
-        MovieSessionService movieSessionService =
-                (MovieSessionService) injector.getInstance(MovieSessionService.class);
         movieSessionService.add(tomorrowMovieSession);
         movieSessionService.add(yesterdayMovieSession);
 
@@ -62,22 +71,20 @@ public class Main {
         System.out.println(movieSessionService.findAvailableSessions(
                         fastAndFurious.getId(), LocalDate.now()));
 
-        AuthenticationService authenticationService =
-                (AuthenticationService) injector.getInstance(AuthenticationService.class);
-        User bob = new User();
+        User john = new User();
+        john.setEmail("johnSmith@email");
+        john.setSalt(HashUtil.getSalt());
+        john.setPassword(HashUtil.hashPassword("1234", john.getSalt()));
         try {
-            bob = authenticationService.register("bob@gmail.com", "12345");
+            john = authenticationService.register(john.getEmail(), john.getPassword());
         } catch (RegistrationException e) {
-            System.out.println("Can't register bob");
+            System.out.println("Can't register user " + john);
         }
 
-        ShoppingCartService shoppingCartService =
-                (ShoppingCartService) injector.getInstance(ShoppingCartService.class);
-        shoppingCartService.addSession(tomorrowMovieSession, bob);
-
-        OrderService orderService = (OrderService) injector.getInstance(OrderService.class);
-        orderService.completeOrder(shoppingCartService.getByUser(bob));
-        System.out.println("-------ORDERS HISTORY FOR BOB--------------");
-        orderService.getOrdersHistory(bob).forEach(System.out::println);
+        shoppingCartService.addSession(yesterdayMovieSession, john);
+        Order completedOrder
+                = orderService.completeOrder(shoppingCartService.getByUser(john));
+        System.out.println(completedOrder);
+        System.out.println(orderService.getOrdersHistory(john));
     }
 }
